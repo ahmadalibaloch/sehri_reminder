@@ -4,13 +4,14 @@ Sehri Reminder
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+A reminder app which reminds for a selected number of times before actual time of Sahri (Sahur) or Iftar.
 
-A few resources to get you started if this is your first Flutter project:
+Open source plugins used are:
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+-   flutter_form_builder
+-   path_provider
+-   android_alarm_manager
+-   flutter_tts
+-   flutter_local_notifications
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+The idea is to remind user before the event. Use can select 5 minutes, 10 minutes and so on as the pre reminders of the event. It is very useful for Sehri and Iftar in Ramadan when meal preparations need to be finalized.
