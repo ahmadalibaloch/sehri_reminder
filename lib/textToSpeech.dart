@@ -7,19 +7,19 @@ class TextToSpeech {
     flutterTts = FlutterTts();
   }
 
-  Future speak(text) async {
+  speak(text) async {
 //    await flutterTts.setVolume(volume);
 //    await flutterTts.setSpeechRate(rate);
 //    await flutterTts.setPitch(pitch);
 
     if (text != null) {
       if (text.isNotEmpty) {
-        var result = await flutterTts.speak(text);
+        await flutterTts.speak(text);
       }
     }
   }
 
-  Future stop() async {
-    var result = await flutterTts.stop();
+  stop() async {
+    await flutterTts.stop();
   }
 }

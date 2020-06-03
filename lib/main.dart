@@ -1,12 +1,14 @@
+import 'dart:core';
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:sehrireminder/TextToSpeech.dart';
+import 'package:sehrireminder/models/ReminderAlarm.dart';
+import 'package:sehrireminder/reminderStorage.dart';
+import 'package:sehrireminder/textToSpeech.dart';
 import 'package:sehrireminder/models/Reminder.dart';
-import 'package:sehrireminder/models/reminderStorage.dart';
 import 'package:android_alarm_manager/android_alarm_manager.dart';
+import 'package:intl/intl.dart';
 
 import 'alarmForm.dart';
 
@@ -21,7 +23,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Sehri Reminder',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -38,56 +40,16 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-final String portName = "sehriPort";
-
-void alarmHit(id) async {
-  var reminders = await readContent();
-  var returnValue = getReminderFromAlarmId(reminders, id);
-  var reminderName = returnValue[0].name;
-  var alarmBefore = returnValue[1];
-  alarmBefore = alarmBefore.toString().replaceAll('min', 'minutes');
-  TextToSpeech tts = new TextToSpeech();
-  var text = '$alarmBefore remaining from $reminderName';
-  if (alarmBefore == 'null') {
-    text = 'It is time for $reminderName';
-  }
-  tts.speak(text);
-  showNotification(reminderName, text);
-}
-
-void showNotification(title, body) async {
-  final localNotifications = FlutterLocalNotificationsPlugin()
-    ..initialize(
-      InitializationSettings(
-        AndroidInitializationSettings('ic_launcher'),
-        null,
-      ),
-    );
-
-  await localNotifications.show(
-    Random().nextInt(999999999),
-    title,
-    body,
-    NotificationDetails(
-      AndroidNotificationDetails(
-        'channel_id',
-        'channel_name',
-        'channel_description',
-      ),
-      null,
-    ),
-  );
-}
-
 class _MyHomePageState extends State<MyHomePage> {
   List<Reminder> reminders = new List<Reminder>();
 
   @override
   void initState() {
     super.initState();
-    //removeContent();
-    loadReminders();
-    AndroidAlarmManager.initialize();
+    removeContent();
+    //loadReminders();
+    setPrayerReminders();
+    //AndroidAlarmManager.initialize();
   }
 
   @override
@@ -99,6 +61,13 @@ class _MyHomePageState extends State<MyHomePage> {
     var reminders = await readContent();
     setState(() {
       this.reminders.addAll(reminders);
+    });
+  }
+
+  void setPrayerReminders() async {
+    var reminders = await addUpdatePrayerReminders();
+    setState(() {
+      this.reminders = reminders;
     });
   }
 
@@ -130,15 +99,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
     writeContent(this.reminders);
     reminder.getReminderAlarms().forEach((reminderAlarm) {
-      AndroidAlarmManager.oneShotAt(
-        reminderAlarm.datetime,
-        reminderAlarm.alarmId,
-        alarmHit,
-        allowWhileIdle: true,
-        exact: true,
-        wakeup: true,
-        rescheduleOnReboot: true,
-      );
+      setOneShotAlarm(reminderAlarm);
     });
   }
 
@@ -164,7 +125,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     setReminderEnabled(index, value),
                   },
                 ),
-                title: Text(reminder.name),
+                title: Text(
+                    '${reminder.name} ${DateFormat("hh:mm MMM dd").format(reminder.date)}'),
                 subtitle: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -193,7 +155,7 @@ class _MyHomePageState extends State<MyHomePage> {
       context: context,
       builder: (context) => new AlertDialog(
         title: new Text('Confirmation'),
-        content: new Text('Do you want to remove this item?'),
+        content: new Text('Do you want to remove this reminder?'),
         actions: <Widget>[
           new FlatButton(
             onPressed: () => Navigator.pop(context, false),
@@ -213,4 +175,81 @@ class _MyHomePageState extends State<MyHomePage> {
       writeContent(this.reminders);
     }
   }
+}
+
+void alarmHit(alarmId) async {
+  var reminders = await readContent();
+  var reminderBeforeInfo = getAlarmBeforeInfoFromAlarmId(reminders, alarmId);
+  Reminder theReminder = reminderBeforeInfo[0];
+  String reminderBeforeStr = reminderBeforeInfo[1];
+  int reminderBeforeIndex = reminderBeforeInfo[2];
+
+  DateTime reminderBeforeDateTime =
+      theReminder.getReminderBeforeTime(reminderBeforeIndex);
+
+  // TODO: the current reminder may be need to be updated for correct new time,
+  // TODO: for example location might have changed for sunset new time
+  // set alarm for next occurrence,
+  setOneShotAlarm(
+      theReminder.getReminderAlarmByReminderBeforeIndex(reminderBeforeIndex));
+  // if reminder time has passed (within one minute)
+  if (reminderBeforeDateTime.millisecondsSinceEpoch + 60000 <
+      DateTime.now().millisecondsSinceEpoch) {
+    // ignore current occurrence firing of notification
+    return;
+  }
+
+  // speak reminder and show notification
+  TextToSpeech tts = new TextToSpeech();
+  var reminderName = theReminder.name;
+  var text = '';
+  if (reminderBeforeStr == null) {
+    text = 'It is time for $reminderName';
+  } else {
+    reminderBeforeStr = reminderBeforeStr.replaceAll('min', 'minutes');
+    text = '$reminderBeforeStr remaining from $reminderName';
+  }
+  tts.speak(text);
+  showNotification(reminderName, text);
+}
+
+void showNotification(title, body) async {
+  final localNotifications = FlutterLocalNotificationsPlugin()
+    ..initialize(
+      InitializationSettings(
+        AndroidInitializationSettings('ic_launcher'),
+        null,
+      ),
+    );
+
+  await localNotifications.show(
+    Random().nextInt(999999999),
+    title,
+    body,
+    NotificationDetails(
+      AndroidNotificationDetails(
+        'sehri_reminder',
+        'sehri_reminder',
+        'sehri reminder with pre event alarms',
+      ),
+      null,
+    ),
+  );
+}
+
+void setOneShotAlarm(ReminderAlarm reminderAlarm) {
+  if (reminderAlarm.datetime.millisecondsSinceEpoch <
+      DateTime.now().millisecondsSinceEpoch) {
+    print('Alarm reminder occurred with past time ${reminderAlarm.alarmId}');
+    return;
+  }
+  AndroidAlarmManager.oneShotAt(
+    reminderAlarm.datetime,
+    reminderAlarm.alarmId,
+    alarmHit,
+    allowWhileIdle: true,
+    exact: true,
+    wakeup: true,
+    rescheduleOnReboot: true,
+  );
 }

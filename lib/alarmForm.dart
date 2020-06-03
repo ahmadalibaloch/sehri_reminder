@@ -1,10 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:sehrireminder/models/Reminder.dart';
-import 'package:sehrireminder/models/reminderStorage.dart';
 
 // Create a Form widget.
 class AddReminderForm extends StatefulWidget {
@@ -66,9 +63,15 @@ class AddReminderFormState extends State<AddReminderForm> {
                   decoration: InputDecoration(
                     labelText: "Time",
                   ),
-                  validator: (val) => null,
                   validators: [
                     FormBuilderValidators.required(),
+                      (val) {
+                      if (val.millisecondsSinceEpoch <
+                          DateTime.now().millisecondsSinceEpoch) {
+                        return 'Time can\'t be in past';
+                      }
+                      return null;
+                    },
                   ],
                   initialTime: TimeOfDay(hour: 8, minute: 0),
                   // initialValue: DateTime.now(),

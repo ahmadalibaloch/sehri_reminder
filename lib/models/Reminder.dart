@@ -18,10 +18,7 @@ class Reminder {
   List<ReminderAlarm> getReminderAlarms() {
     List<ReminderAlarm> reminderAlarms = [];
     for (int i = 0; i < reminderBefores.length; i++) {
-      var reminderBeforeCode = getReminderBeforeCodes(reminderBefores[i]);
-      var duration = getDurationFromReminderBeforeCode(reminderBeforeCode);
-      reminderAlarms.add(new ReminderAlarm(
-          datetime: date.add(duration), alarmId: alarmIds[i]));
+      reminderAlarms.add(getReminderAlarmByReminderBeforeIndex(i));
     }
     // add alarm for exact time
     reminderAlarms
@@ -39,6 +36,19 @@ class Reminder {
     });
     // push an alarmId for exact time match
     alarmIds.add(getShortAlarmId(int.parse(id)));
+  }
+
+  DateTime getReminderBeforeTime(int index) {
+    if (index == reminderBefores.length) {
+      // return exact date
+      return this.date;
+    }
+    return this.date.add(getDurationFromReminderBeforeCode(
+        getReminderBeforeCodes(reminderBefores[index])));
+  }
+
+  ReminderAlarm getReminderAlarmByReminderBeforeIndex(int index){
+    return new ReminderAlarm(datetime: getReminderBeforeTime(index), alarmId: alarmIds[index]);
   }
 
   Reminder.parse(var strOrMap) {
