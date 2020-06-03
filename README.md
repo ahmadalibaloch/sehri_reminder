@@ -1,10 +1,10 @@
 # sehrireminder
 
-Sehri Reminder
+A reminder app which reminds for a selected number of times before actual time of Sahri (Sahur) or Iftar.
 
 ## Getting Started
 
-A reminder app which reminds for a selected number of times before actual time of Sahri (Sahur) or Iftar.
+![Screenshot](https://github.com/ahmadalibaloch/sehri_reminder/raw/master/screenshot.PNG)
 
 Open source plugins used are:
 
