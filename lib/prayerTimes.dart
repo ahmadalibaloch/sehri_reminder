@@ -2,13 +2,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:libpray/libpray.dart';
 
 Future<Map<String, dynamic>> getPrayerTimes() async {
-  Position position = await Geolocator()
-      .getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-  final PrayerCalculationSettings settings = PrayerCalculationSettings(
-      (PrayerCalculationSettingsBuilder b) => b
+  Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high);
+  final PrayerCalculationSettings settings =
+      PrayerCalculationSettings((PrayerCalculationSettingsBuilder b) => b
         ..calculationMethod.replace(CalculationMethod.fromPreset(
-            preset: CalculationMethodPreset
-                .departmentOfIslamicAdvancementOfMalaysia))
+            preset: CalculationMethodPreset.universityOfIslamicSciencesKarachi))
         ..imsakParameter.replace(PrayerCalculationParameter(
             (PrayerCalculationParameterBuilder c) => c
               ..value = 0
@@ -28,17 +27,19 @@ Future<Map<String, dynamic>> getPrayerTimes() async {
 
   // Init location info.
   final Geocoordinate geo = Geocoordinate((GeocoordinateBuilder b) => b
-    ..latitude = position.latitude
-    ..longitude = position.longitude
-    ..altitude = position.altitude);
+        ..latitude = 31.451481 //position.latitude
+        ..longitude = 74.2531461 // position.longitude
+        ..altitude = 208 // position.altitude
+      );
   DateTime date = DateTime.now();
-  double timeZone = double.parse(
-      '${date.timeZoneOffset.inMinutes ~/ 60}.${date.timeZoneOffset.inMinutes % 60}');
+  double timeZone = 5.0;
+  // double timeZone = double.parse(
+  //     '${date.timeZoneOffset.inMinutes ~/ 60}.${date.timeZoneOffset.inMinutes % 60}');
 
   final Prayers prayers = Prayers.on(
       date: date, settings: settings, coordinate: geo, timeZone: timeZone);
 
-  Map<String, dynamic> dynamicPrayers = new Map();
+  Map<String, dynamic> dynamicPrayers = {};
   dynamicPrayers['fajr'] = prayers.fajr;
   dynamicPrayers['dhuhr'] = prayers.dhuhr;
   dynamicPrayers['asr'] = prayers.asr;

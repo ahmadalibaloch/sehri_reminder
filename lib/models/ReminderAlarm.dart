@@ -1,8 +1,6 @@
-import 'Reminder.dart';
-
 class ReminderAlarm {
   int alarmId;
   DateTime datetime;
 
-  ReminderAlarm({this.datetime, this.alarmId});
+  ReminderAlarm({required this.datetime, required this.alarmId});
 }

@@ -1,25 +1,36 @@
-import 'dart:core';
 import 'dart:math';
 
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:sehrireminder/models/ReminderAlarm.dart';
-import 'package:sehrireminder/reminderStorage.dart';
-import 'package:sehrireminder/textToSpeech.dart';
-import 'package:sehrireminder/models/Reminder.dart';
-import 'package:android_alarm_manager/android_alarm_manager.dart';
+import 'package:sehri_reminder_app/reminderStorage.dart';
+import 'package:sehri_reminder_app/textToSpeech.dart';
 import 'package:intl/intl.dart';
 
 import 'alarmForm.dart';
+import 'models/Reminder.dart';
+import 'models/ReminderAlarm.dart';
+import 'package:logger/logger.dart';
+
+var logger = Logger(
+  printer: PrettyPrinter(),
+);
+
+var printer = Logger(
+  printer: PrettyPrinter(methodCount: 0),
+);
 
 void main() async {
-  // WidgetsFlutterBinding.ensureInitialized();
-  runApp(MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  await AndroidAlarmManager.initialize();
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+  const MyApp({Key? key}) : super(key: key);
 
+  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -27,29 +38,32 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Sehri Reminder'),
+      home: const MyHomePage(title: 'Sehri Reminder Home Page'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
+  const MyHomePage({Key? key, required this.title}) : super(key: key);
+
   final String title;
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<Reminder> reminders = new List<Reminder>();
+  List<Reminder> reminders = <Reminder>[];
 
   @override
   void initState() {
     super.initState();
-    removeContent();
-    //loadReminders();
+    // removeContent();
+    loadReminders();
+
+
     setPrayerReminders();
-    //AndroidAlarmManager.initialize();
+
   }
 
   @override
@@ -73,18 +87,19 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void setReminderEnabled(index, value) {
     setState(() {
-      this.reminders[index].enabled = value;
+      reminders[index].enabled = value;
     });
-    writeContent(this.reminders);
+    writeContent(reminders);
   }
 
   void btnAddReminderClick(Reminder reminderInput, {index = -1}) async {
     Reminder reminder = await showDialog(
-        context: context,
-        child: new AlertDialog(
-          title: new Text("Add Reminder"),
-          content: new AddReminderForm(reminder: reminderInput),
-        ));
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text("Add Reminder"),
+        content: AddReminderForm(reminder: reminderInput),
+      ),
+    );
     if (reminder == null) {
       // dialog dismissed
       return;
@@ -92,12 +107,12 @@ class _MyHomePageState extends State<MyHomePage> {
     reminder.generateAlarmIds();
     setState(() {
       if (index == -1) {
-        this.reminders.add(reminder);
+        reminders.add(reminder);
       } else {
-        this.reminders[index] = reminder;
+        reminders[index] = reminder;
       }
     });
-    writeContent(this.reminders);
+    writeContent(reminders);
     reminder.getReminderAlarms().forEach((reminderAlarm) {
       setOneShotAlarm(reminderAlarm);
     });
@@ -138,14 +153,14 @@ class _MyHomePageState extends State<MyHomePage> {
             }),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => btnAddReminderClick(new Reminder(
+        onPressed: () => btnAddReminderClick(Reminder(
             id: Reminder.getReminderUniqueId(),
             name: 'h',
             enabled: true,
-            date: DateTime.now().add(new Duration(minutes: 1)),
+            date: DateTime.now().add(const Duration(minutes: 1)),
             reminderBefores: [])),
         tooltip: 'Add Reminder',
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -153,26 +168,26 @@ class _MyHomePageState extends State<MyHomePage> {
   confirmDelete(int index) async {
     var result = await showDialog(
       context: context,
-      builder: (context) => new AlertDialog(
-        title: new Text('Confirmation'),
-        content: new Text('Do you want to remove this reminder?'),
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmation'),
+        content: const Text('Do you want to remove this reminder?'),
         actions: <Widget>[
-          new FlatButton(
+          FlatButton(
             onPressed: () => Navigator.pop(context, false),
-            child: new Text('No'),
+            child: const Text('No'),
           ),
-          new FlatButton(
+          FlatButton(
             onPressed: () => Navigator.pop(context, true),
-            child: new Text('Yes'),
+            child: const Text('Yes'),
           ),
         ],
       ),
     );
     if (result) {
       setState(() {
-        this.reminders.removeAt(index);
+        reminders.removeAt(index);
       });
-      writeContent(this.reminders);
+      writeContent(reminders);
     }
   }
 }
@@ -200,7 +215,7 @@ void alarmHit(alarmId) async {
   }
 
   // speak reminder and show notification
-  TextToSpeech tts = new TextToSpeech();
+  TextToSpeech tts = TextToSpeech();
   var reminderName = theReminder.name;
   var text = '';
   if (reminderBeforeStr == null) {
@@ -214,25 +229,33 @@ void alarmHit(alarmId) async {
 }
 
 void showNotification(title, body) async {
-  final localNotifications = FlutterLocalNotificationsPlugin()
-    ..initialize(
-      InitializationSettings(
-        AndroidInitializationSettings('ic_launcher'),
-        null,
-      ),
-    );
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
-  await localNotifications.show(
-    Random().nextInt(999999999),
+  const AndroidInitializationSettings initializationSettingsAndroid =  AndroidInitializationSettings('ic_launcher');
+
+  const InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid);
+
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+
+  // final localNotifications = FlutterLocalNotificationsPlugin()
+  //   ..initialize(
+  //     const InitializationSettings(
+  //       android: AndroidInitializationSettings('ic_launcher'),
+  //     ),
+  //   );
+
+  await flutterLocalNotificationsPlugin.show(
+    0,
     title,
     body,
-    NotificationDetails(
-      AndroidNotificationDetails(
+    const NotificationDetails(
+      android: AndroidNotificationDetails(
         'sehri_reminder',
         'sehri_reminder',
-        'sehri reminder with pre event alarms',
+        // 'sehri reminder with pre event alarms'
       ),
-      null,
     ),
   );
 }
@@ -240,7 +263,7 @@ void showNotification(title, body) async {
 void setOneShotAlarm(ReminderAlarm reminderAlarm) {
   if (reminderAlarm.datetime.millisecondsSinceEpoch <
       DateTime.now().millisecondsSinceEpoch) {
-    print('Alarm reminder occurred with past time ${reminderAlarm.alarmId}');
+    printer.w('Alarm reminder occurred with past time ${reminderAlarm.alarmId}');
     return;
   }
   AndroidAlarmManager.oneShotAt(
